@@ -241,6 +241,7 @@
     const BASE_URL = "https://spathose-hygienically-sarita.ngrok-free.dev";
     const SERVICES_URL = `${BASE_URL}/services`;
     const UPDATE_URL = `${BASE_URL}/services/status`;
+    const LOGIC_APP_URL = "https://prod-22.northcentralus.logic.azure.com:443/workflows/929f709c6a93485bacf8b2dae0c3e35c/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=o4NYeQvPoLJpRhQpId6C0ziejfvtIJ8W_2uxhwbWccA";
 
     const grid = document.getElementById("servicesGrid");
     const stats = document.getElementById("stats");
@@ -364,12 +365,38 @@
           throw new Error(`POST /services/status failed (${response.status})`);
         }
 
+        try {
+          await notifyLogicApp(name, up);
+        } catch (logicErr) {
+          showError(`${logicErr.message}. Service status was updated, but Logic App notification failed.`);
+        }
         await loadServices();
       } catch (err) {
         upBtn.disabled = oldUpDisabled;
         downBtn.disabled = oldDownDisabled;
         statusLine.textContent = "Update failed";
         showError(`${err.message}. Confirm API allows POST from this page origin.`);
+      }
+    }
+
+    async function notifyLogicApp(name, up) {
+      const payload = {
+        name,
+        status: up ? "up" : "down"
+      };
+
+      const response = await fetch(LOGIC_APP_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Logic App trigger failed (${response.status})`);
       }
     }
 
