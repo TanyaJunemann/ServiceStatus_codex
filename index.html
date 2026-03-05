@@ -1,0 +1,397 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Service Health Status</title>
+  <style>
+    :root {
+      --bg-1: #0a1025;
+      --bg-2: #1a2f5b;
+      --card: #0f1834cc;
+      --text: #eaf0ff;
+      --muted: #b5c2e6;
+      --ok: #17c964;
+      --down: #f31260;
+      --warn: #f5a524;
+      --accent: #00d2ff;
+      --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 20%, #1f4ea8 0%, transparent 35%),
+        radial-gradient(circle at 85% 10%, #0ba8b7 0%, transparent 30%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      padding: 28px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .header {
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .title {
+      font-size: clamp(1.6rem, 3vw, 2.3rem);
+      margin: 0;
+      letter-spacing: 0.4px;
+    }
+
+    .sub {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 9px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.84rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .chip.ok { color: #73ffaf; }
+    .chip.down { color: #ff7aa8; }
+    .chip.total { color: #7ee6ff; }
+
+    .toolbar {
+      padding: 0 24px 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #021124;
+      background: linear-gradient(135deg, #88f5ff, #3cd2ff);
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .muted-btn {
+      background: linear-gradient(135deg, #d9e3ff, #a9bfff);
+    }
+
+    .status-line {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-left: auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      padding: 0 24px 24px;
+    }
+
+    .service {
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      background: rgba(8, 15, 34, 0.66);
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .service:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.32);
+    }
+
+    .service-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .service-name {
+      font-weight: 700;
+      font-size: 1rem;
+      line-height: 1.25;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex: 0 0 12px;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .dot.up { color: var(--ok); background: var(--ok); }
+    .dot.down { color: var(--down); background: var(--down); }
+
+    .tag {
+      display: inline-block;
+      width: fit-content;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+
+    .tag.up {
+      background: rgba(23, 201, 100, 0.18);
+      color: #7bffbc;
+      border: 1px solid rgba(23, 201, 100, 0.5);
+    }
+
+    .tag.down {
+      background: rgba(243, 18, 96, 0.18);
+      color: #ff8db6;
+      border: 1px solid rgba(243, 18, 96, 0.5);
+    }
+
+    .service-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .up-btn { background: linear-gradient(135deg, #8effca, #22d67f); }
+    .down-btn { background: linear-gradient(135deg, #ff9fc0, #ff427f); }
+
+    .error {
+      margin: 0 24px 24px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(245, 165, 36, 0.15);
+      border: 1px solid rgba(245, 165, 36, 0.5);
+      color: #ffd89a;
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      .header, .toolbar, .grid { padding-left: 14px; padding-right: 14px; }
+      .status-line { width: 100%; margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="panel">
+      <div class="header">
+        <div>
+          <h1 class="title">Service Health Dashboard</h1>
+          <p class="sub">Live monitor for your Microsoft and Azure services</p>
+        </div>
+        <div class="stats" id="stats"></div>
+      </div>
+
+      <div class="toolbar">
+        <button id="refreshBtn">Refresh now</button>
+        <button id="autoBtn" class="muted-btn">Auto refresh: On (20s)</button>
+        <span class="status-line" id="statusLine">Waiting for first load...</span>
+      </div>
+
+      <div class="error" id="errorBox"></div>
+      <div class="grid" id="servicesGrid"></div>
+    </section>
+  </main>
+
+  <script>
+    const BASE_URL = "https://spathose-hygienically-sarita.ngrok-free.dev";
+    const SERVICES_URL = `${BASE_URL}/services`;
+    const UPDATE_URL = `${BASE_URL}/services/status`;
+
+    const grid = document.getElementById("servicesGrid");
+    const stats = document.getElementById("stats");
+    const statusLine = document.getElementById("statusLine");
+    const errorBox = document.getElementById("errorBox");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const autoBtn = document.getElementById("autoBtn");
+
+    let autoRefresh = true;
+    let timer = null;
+
+    function showError(message) {
+      errorBox.style.display = "block";
+      errorBox.textContent = message;
+    }
+
+    function clearError() {
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+    }
+
+    function updateStats(services) {
+      const total = services.length;
+      const upCount = services.filter(s => s.up).length;
+      const downCount = total - upCount;
+
+      stats.innerHTML = `
+        <span class="chip total">Total: ${total}</span>
+        <span class="chip ok">Up: ${upCount}</span>
+        <span class="chip down">Down: ${downCount}</span>
+      `;
+    }
+
+    function formatTime(d = new Date()) {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    function renderServices(services) {
+      grid.innerHTML = "";
+
+      services.forEach(service => {
+        const card = document.createElement("article");
+        card.className = "service";
+
+        card.innerHTML = `
+          <div class="service-head">
+            <div class="service-name">${service.name}</div>
+            <span class="dot ${service.up ? "up" : "down"}"></span>
+          </div>
+          <span class="tag ${service.up ? "up" : "down"}">${service.up ? "Operational" : "Degraded"}</span>
+          <div class="service-actions">
+            <button class="up-btn" data-action="up">Set Up</button>
+            <button class="down-btn" data-action="down">Set Down</button>
+          </div>
+        `;
+
+        const [upBtn, downBtn] = card.querySelectorAll("button");
+        upBtn.disabled = service.up;
+        downBtn.disabled = !service.up;
+
+        upBtn.addEventListener("click", () => setServiceStatus(service.name, true, upBtn, downBtn));
+        downBtn.addEventListener("click", () => setServiceStatus(service.name, false, upBtn, downBtn));
+
+        grid.appendChild(card);
+      });
+    }
+
+    async function loadServices() {
+      try {
+        clearError();
+        statusLine.textContent = "Loading services...";
+
+        const response = await fetch(SERVICES_URL, {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "true"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`GET /services failed (${response.status})`);
+        }
+
+        const data = await response.json();
+
+        if (!data || !Array.isArray(data.services)) {
+          throw new Error("Unexpected response shape from /services");
+        }
+
+        updateStats(data.services);
+        renderServices(data.services);
+        statusLine.textContent = `Last updated: ${formatTime()}`;
+      } catch (err) {
+        statusLine.textContent = "Unable to load data";
+        showError(`${err.message}. Check endpoint URL and CORS settings.`);
+      }
+    }
+
+    async function setServiceStatus(name, up, upBtn, downBtn) {
+      const oldUpDisabled = upBtn.disabled;
+      const oldDownDisabled = downBtn.disabled;
+
+      try {
+        clearError();
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+        statusLine.textContent = `Updating ${name}...`;
+
+        const response = await fetch(UPDATE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "true"
+          },
+          body: JSON.stringify({ name, up })
+        });
+
+        if (!response.ok) {
+          throw new Error(`POST /services/status failed (${response.status})`);
+        }
+
+        await loadServices();
+      } catch (err) {
+        upBtn.disabled = oldUpDisabled;
+        downBtn.disabled = oldDownDisabled;
+        statusLine.textContent = "Update failed";
+        showError(`${err.message}. Confirm API allows POST from this page origin.`);
+      }
+    }
+
+    function setAutoRefresh(enabled) {
+      autoRefresh = enabled;
+      autoBtn.textContent = `Auto refresh: ${enabled ? "On (20s)" : "Off"}`;
+
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+
+      if (enabled) {
+        timer = setInterval(loadServices, 20000);
+      }
+    }
+
+    refreshBtn.addEventListener("click", loadServices);
+    autoBtn.addEventListener("click", () => setAutoRefresh(!autoRefresh));
+
+    setAutoRefresh(true);
+    loadServices();
+  </script>
+</body>
+</html>
